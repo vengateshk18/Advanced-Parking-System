@@ -77,74 +77,61 @@ class ParkingSystem:
         ParkingSystem.printStructure(root.right)
     
     @staticmethod
-    def getParkingSlot(slot: ParkingStage, wheels: int):
-        if not slot:
+    def getParkingSlot(stage: ParkingStage, wheels: int):
+        if not stage:
             return None
         
         # Check the left subtree
-        data = ParkingSystem.getParkingSlot(slot.left, wheels)
+        data = ParkingSystem.getParkingSlot(stage.left, wheels)
         if data is not None:  # If a valid slot is found, stop and return
             return data
 
         # Check the current slot
-        data = ParkingSystem.searchVehicle(slot, wheels)
+        data = ParkingSystem.findBestSlot(stage, wheels)
         if data is not None:  # If the current slot matches, return it
             return data
 
         # Check the right subtree
-        return ParkingSystem.getParkingSlot(slot.right, wheels)
+        return ParkingSystem.getParkingSlot(stage.right, wheels)
 
     @staticmethod
-    def searchVehicle(slot : ParkingStage, wheels : int):
+    def findBestSlot(stage : ParkingStage, wheels : int):
         if wheels==2:
             for i in range(2):
                 for j in range(3):
-                    if slot.slots[i][j].startswith('Slot'):
-                        return [slot,slot.stageId,slot.stageName,slot.slots[i][j]]
+                    if type(stage.slots[i][j])==str and stage.slots[i][j].startswith('Slot'):
+                        return [stage,int(stage.stageId),stage.stageName,stage.slots[i][j],i,j]
         elif wheels==4:
             for i in range(2):
                 for j in range(2):
-                    if slot.slots[i][j].startswith('Slot') and slot.slots[i][j+1].startswith('Slot'):
-                        return [slot,slot.stageId,slot.stageName,slot.slots[i][j],slot.slots[i][j+1]]
-
+                    if type(stage.slots[i][j])==str and type(stage.slots[i][j+1])==str and stage.slots[i][j].startswith('Slot') and stage.slots[i][j+1].startswith('Slot'):
+                        return [stage,stage.stageId,stage.stageName,stage.slots[i][j],stage.slots[i][j+1],i,j,j+1]
         return None
+    @staticmethod
+    def placeVehicle(stage: ParkingStage, stageRow : int, stageColumn : int, vehicle: Vehicle):
+        stage.slots[stageRow][stageColumn] = vehicle
+
+    @staticmethod
+    def searchVehicle(vehicleNumber: str):
+        parkedData=pd.read_excel('./data.xlsx')
+        if vehicleNumber in parkedData['vehicleNumber'].values:
+            return parkedData[parkedData['vehicleNumber']==vehicleNumber]
+        else:
+            return None
+    @staticmethod
+    def chargeVehicle(vehicleData: pd.DataFrame):
+        vehicleData['exit']=str(datetime.datetime.now())
+        vehicleData['exit']=pd.to_datetime(vehicleData['exit'])
+        vehicleData['datetime']=pd.to_datetime(vehicleData['datetime'])
+        vehicleData['duration']=(vehicleData['exit']-vehicleData['datetime']).dt.total_seconds()/3600
+        charge=pd.read_json('./charge.json')
+        if vehicleData['wheels'].values==2:
+            return charge['Bike']['baseCharge']+charge['Bike']['chargePerHour']*vehicleData['duration']
+        else:
+            return charge['Car']['baseCharge']+charge['Car']['chargePerHour']*vehicleData['duration']
+        return None
+            
+        
                         
 # Example Usage
 ParkingSystem.loadData()
-
-
-
-while True:
-    print("Welcome to X Parking System")
-    print("If you want to park your vehicle press 1")
-    print("If you want to exit press 2")
-    choice = int(input("Enter your choice: "))
-    
-    if choice == 1:
-        # Collect vehicle details
-        print("Enter the vehicle details")
-        vehicleNumber = input("Enter the vehicle number in proper format (e.g., KA-01-HH-1234): ")
-        vehicleName = input("Enter the vehicle name: ")
-        name = input("Enter your name: ")
-        email = input("Enter your email: ")
-        phone = input("Enter your phone: ")
-        wheels = int(input("Enter the number of wheels in your vehicle: "))
-        vehicle = Vehicle(vehicleNumber, vehicleName, name, email, phone, wheels)
-        try:
-            parkingdata = pd.read_excel('./data.xlsx')
-        except FileNotFoundError:
-            parkingdata = pd.DataFrame(columns=["vehicleNumber", "vehicleName", "name", "email", "phone", "wheels"])
-        new_data = {
-            "vehicleNumber": [vehicle.vehicleNumber],
-            "vehicleName": [vehicle.vehicleName],
-            "name": [vehicle.user.name],
-            "email": [vehicle.user.email],
-            "phone": [vehicle.user.phone],
-            "wheels": [vehicle.wheels]
-        }
-        new_data = pd.DataFrame(new_data)
-        combined_df = pd.concat([parkingdata, new_data], ignore_index=True)
-        combined_df.to_excel('./data.xlsx', index=False, engine='openpyxl')
-    elif choice == 2:
-        print("Exiting the system.")
-        break

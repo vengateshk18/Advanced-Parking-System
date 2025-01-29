@@ -1,0 +1,10 @@
+{
+    "Car": {
+        "chargePerHour": 10,
+        "baseCharge": 30
+    },
+    "Bike": {
+        "chargePerHour": 5,
+        "baseCharge": 10
+    }
+}
